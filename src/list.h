@@ -71,6 +71,12 @@ extern "C" {
         lcb_list_t *prev;
     };
 
+    typedef struct lcb_clist_s {
+        lcb_list_t *next;
+        lcb_list_t *prev;
+        lcb_size_t size;
+    } lcb_clist_t;
+
     typedef int (*lcb_list_cmp_fn)(lcb_list_t *a, lcb_list_t *b);
 
     void lcb_list_init(lcb_list_t *list);
@@ -82,11 +88,20 @@ extern "C" {
     int lcb_list_contains(lcb_list_t *list, lcb_list_t *item);
     void lcb_list_add_sorted(lcb_list_t *list, lcb_list_t *item, lcb_list_cmp_fn cmp);
 
+    /** Definitions for type safety. Rather than macros */
+    void lcb_clist_init(lcb_clist_t*);
+    void lcb_clist_append(lcb_clist_t*, lcb_list_t*);
+    void lcb_clist_prepend(lcb_clist_t*, lcb_list_t*);
+    void lcb_clist_delete(lcb_clist_t*,lcb_list_t*);
+    lcb_list_t* lcb_clist_shift(lcb_clist_t*);
+    lcb_list_t* lcb_clist_pop(lcb_clist_t*);
+
+
 #define LCB_LIST_IS_EMPTY(list) \
     ((list) == (list)->next && (list) == (list)->prev)
 
 #define LCB_LIST_ITEM(ptr, type, member) \
-    ((type *) ((char *)(ptr) - offsetof(type, member)))
+    ((type *) (void *) ((char *)(ptr) - offsetof(type, member)))
 
 #define LCB_LIST_FOR(pos, list) \
     for (pos = (list)->next; pos != (list); pos = pos->next)
@@ -94,6 +109,17 @@ extern "C" {
 
 #define LCB_LIST_SAFE_FOR(pos, n, list) \
     for (pos = (list)->next, n = pos->next; pos != (list); pos = n, n = pos->next)
+
+#define LCB_LIST_HAS_NEXT(ll, item) \
+    ((item)->next != ll)
+
+#define LCB_CLIST_SIZE(cl) (cl)->size
+
+#define LCB_LIST_TAIL(list) \
+    ((LCB_LIST_IS_EMPTY(list)) ? NULL : (list)->prev)
+
+#define LCB_LIST_HEAD(list) \
+    ((LCB_LIST_IS_EMPTY(list)) ? NULL : (list)->next)
 
 #ifdef __cplusplus
 }

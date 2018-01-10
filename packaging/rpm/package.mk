@@ -1,16 +1,18 @@
 .PHONY: dist-rpm
 
-RPM_WORKSPACE=$(shell pwd)/build
-RPM_DIR=$(RPM_WORKSPACE)/rpmbuild
-RPM_VER=$(shell echo $(VERSION) | awk -F_ '{ print $$1 }')
-RPM_REL=$(shell echo $(VERSION) | awk -F_ '{ print $$2"_"$$3 }')
+# Defined by CMake. For autotools, these will just be the normal build tree
+BUILDROOT		?= $(shell pwd)
+SRCROOT			?= $(shell pwd)
 
-ifeq ($(RPM_REL),_)
-  RPM_REL=1
-  TARPREFIX=%{name}-%{version}
-else
-  TARPREFIX=%{name}-%{version}_%{release}
-endif
+# Variables derived
+GITPARSE		:= $(SRCROOT)/packaging/parse-git-describe.pl
+RPM_WORKSPACE	:= $(BUILDROOT)/build-rpm
+RPM_DIR			:= $(RPM_WORKSPACE)/
+RPM_VER			:= $(shell $(GITPARSE) --rpm-ver --input $(REVDESCRIBE))
+RPM_REL			:= $(shell $(GITPARSE) --rpm-rel --input $(REVDESCRIBE))
+TAR_VERSION		:= $(shell $(GITPARSE) --tar --input $(REVDESCRIBE))
+
+EXTRA_RPMDEFS	:=
 
 dist-rpm: dist
 	rm -rf $(RPM_WORKSPACE)
@@ -19,9 +21,20 @@ dist-rpm: dist
 	mkdir $(RPM_DIR)/BUILD
 	mkdir $(RPM_DIR)/RPMS
 	mkdir $(RPM_DIR)/SRPMS
-	cp $(PACKAGE)-$(VERSION).tar.gz $(RPM_DIR)/SOURCES
-	sed 's/@VERSION@/$(RPM_VER)/g;s/@RELEASE@/$(RPM_REL)/g;s/@TARREDAS@/$(TARPREFIX)/g' < packaging/rpm/$(PACKAGE).spec.in > $(RPM_WORKSPACE)/$(PACKAGE).spec
-	(cd $(RPM_WORKSPACE); rpmbuild ${RPM_FLAGS} -ba $(PACKAGE).spec)
-	mv $(RPM_DIR)/RPMS/*/*.rpm `pwd`
-	mv $(RPM_DIR)/SRPMS/*.rpm `pwd`
+	cp $(BUILDROOT)/$(PACKAGE)-$(TAR_VERSION).tar.gz $(RPM_DIR)/SOURCES
+	sed \
+		's/@VERSION@/$(RPM_VER)/g;s/@RELEASE@/$(RPM_REL)/g;s/@TARREDAS@/libcouchbase-$(TAR_VERSION)/g' \
+		< packaging/rpm/$(PACKAGE).spec.in > $(RPM_WORKSPACE)/$(PACKAGE).spec
+
+	(cd $(RPM_WORKSPACE) && \
+		rpmbuild ${RPM_FLAGS} -ba \
+		--define "_topdir $(RPM_DIR)" \
+		--define "_source_filedigest_algorithm md5" \
+		--define "_binary_filedigest_algorithm md5" \
+		$(EXTRA_RPMDEFS) \
+		$(PACKAGE).spec \
+	)
+
+	mv $(RPM_DIR)/RPMS/*/*.rpm $(BUILDROOT)
+	mv $(RPM_DIR)/SRPMS/*.rpm $(BUILDROOT)
 	rm -rf $(RPM_WORKSPACE)

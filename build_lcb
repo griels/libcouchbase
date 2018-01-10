@@ -1,0 +1,7 @@
+#!/bin/bash
+git clean -f
+./config/autorun.sh
+./configure CPPFLAGS=-DGTEST_USE_OWN_TR1_TUPLE=1
+make
+make distcheck
+cd ../couchbase-python-client-2.3.1 && rm -Rf build && python setup.py build_ext --inplace     --library-dir ../libcouchbase/lib     --include-dir ../libcouchbase/include && python setup.py install && nosetests -v couchbase.tests.test_sync

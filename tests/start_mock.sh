@@ -23,10 +23,20 @@ unset UMEM_DEBUG
 # This is a wrapper script to start the Couchbase Mock server.
 # We could have started it directly from the C code, but by using
 # a script it's a bit easier to test it manually ;)
+if [ -z "$srcdir" ]; then
+    srcdir="."
+fi
+
+for p in "$srcdir/tests" "$srcdir" "tests" "."; do
+    if [ -f "$p/CouchbaseMock.jar" ]; then
+        COUCHBASEMOCK="$p/CouchbaseMock.jar"
+    fi
+done
+
 exec java \
        -client \
-       -jar tests/CouchbaseMock.jar \
-        --nodes=10 \
+       -jar "$COUCHBASEMOCK" \
+        --nodes=4 \
         --host=localhost \
         --port=0 \
         "$@"

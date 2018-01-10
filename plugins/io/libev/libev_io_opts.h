@@ -16,12 +16,24 @@
  */
 
 /**
+ * @file
+ * libev integration with libcouchbase
+ * @author Sergey Avseyev
+ */
+
+/**
+ * @ingroup lcb-io-plugin-api
+ * @defgroup lcb-libev libev
+ * @brief libev integration
+ *
+ * @details
  * libcouchbase_create_libev_io_opts() allows you to create an instance
  * of the ioopts that will utilize libev. You may either supply an event
  * loop (if you'd like to add your own events into the loop), or it will
  * create it's own.
  *
- * @author Sergey Avseyev
+ * @addtogroup lcb-libev
+ * @{
  */
 #ifndef LIBCOUCHBASE_LIBEV_IO_OPTS_H
 #define LIBCOUCHBASE_LIBEV_IO_OPTS_H 1
@@ -36,11 +48,12 @@ extern "C" {
      * Create an instance of an event handler that utilize libev for
      * event notification.
      *
-     * @param version the API version to use
+     * @param version Set this to 0. This may be used in the future to allow
+     *        variation on the third argument (`void*` currently).
+     * @param[out] io a pointer to a newly created and initialized event handler
      * @param loop the event loop (struct ev_loop *) to hook use (please
      *             note that you shouldn't reference the event loop from
      *             multiple threads)
-     * @param io a pointer to a newly created and initialized event handler
      * @return status of the operation
      */
     LIBCOUCHBASE_API
@@ -49,4 +62,5 @@ extern "C" {
 }
 #endif
 
+/**@}*/
 #endif

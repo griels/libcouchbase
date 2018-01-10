@@ -28,7 +28,7 @@
 #include <sys/types.h>
 #endif
 
-#if !defined HAVE_STDINT_H && defined _WIN32
+#if !defined HAVE_STDINT_H && defined _WIN32 && defined(_MSC_VER)
 # include "win_stdint.h"
 #else
 # include <stdint.h>
@@ -54,15 +54,8 @@
 #include <unistd.h>
 #endif
 
-#ifdef HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
-
-#ifdef HAVE_WINSOCK2_H
+#ifdef _WIN32
 #include <winsock2.h>
-#endif
-
-#ifdef HAVE_WS2TCPIP_H
 #include <ws2tcpip.h>
 #endif
 
@@ -72,10 +65,6 @@
 
 #ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h>
-#endif
-
-#ifdef HAVE_STRING_H
-#include <string.h>
 #endif
 
 #ifdef HAVE_STRINGS_H
@@ -90,24 +79,34 @@
 #include <dlfcn.h>
 #endif
 
-#ifdef HAVE_LIMITS_H
+
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif
+
+/* Standard C includes */
 #include <limits.h>
-#else
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+
 #ifndef PATH_MAX
 #define PATH_MAX 1024
 #endif
-#endif
-
 
 #ifdef _WIN32
-#include "win32/win_errno_sock.h"
+#include <libcouchbase/plugins/io/wsaerr.h>
 
 #ifndef __MINGW32__
-  #define snprintf _snprintf
-  #define strcasecmp(a,b) _stricmp(a,b)
-  #define strncasecmp(a,b,c) _strnicmp(a,b,c)
-  #undef strdup
-  #define strdup _strdup
+
+#if defined(_MSC_VER) && _MSC_VER < 1900
+#define snprintf _snprintf
+#endif
+
+#define strcasecmp(a,b) _stricmp(a,b)
+#define strncasecmp(a,b,c) _strnicmp(a,b,c)
+#undef strdup
+#define strdup _strdup
 #endif
 
 #else
@@ -115,13 +114,17 @@
 #define SOCKET_ERROR -1
 #endif /* _WIN32 */
 
-#ifndef HAVE_HTONLL
-#ifdef WORDS_BIGENDIAN
-#define ntohll(a) a
-#define htonll(a) a
+
+#if defined(HAVE_HTONLL)
+    #define lcb_htonll htonll
+    #define lcb_ntohll ntohll
+#elif defined(WORDS_BIGENDIAN)
+    #define lcb_ntohll(a) a
+    #define lcb_htonll(a) a
 #else
-#define ntohll(a) lcb_byteswap64(a)
-#define htonll(a) lcb_byteswap64(a)
+    #define lcb_ntohll(a) lcb_byteswap64(a)
+    #define lcb_htonll(a) lcb_byteswap64(a)
+#endif /* HAVE_HTONLL */
 
 #ifdef __cplusplus
 extern "C" {
@@ -130,9 +133,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-#endif /* WORDS_BIGENDIAN */
-#endif /* HAVE_HTONLL */
-
 
 #ifdef linux
 #undef ntohs
@@ -150,6 +150,10 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+#endif
+
+#if defined(EWOULDBLOCK) && defined(EAGAIN) && EWOULDBLOCK != EAGAIN
+#define USE_EAGAIN 1
 #endif
 
 #endif /* LIBCOUCHBASE_CONFIG_STATIC_H */

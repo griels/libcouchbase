@@ -23,7 +23,7 @@ void lcb_list_init(lcb_list_t *list)
     list->prev = list;
 }
 
-static void lcb_list_insert(lcb_list_t *prev, lcb_list_t *next, lcb_list_t *item)
+static void list_insert(lcb_list_t *prev, lcb_list_t *next, lcb_list_t *item)
 {
     item->next = next;
     item->prev = prev;
@@ -33,15 +33,15 @@ static void lcb_list_insert(lcb_list_t *prev, lcb_list_t *next, lcb_list_t *item
 
 void lcb_list_prepend(lcb_list_t *list, lcb_list_t *item)
 {
-    lcb_list_insert(list, list->next, item);
+    list_insert(list, list->next, item);
 }
 
 void lcb_list_append(lcb_list_t *list, lcb_list_t *item)
 {
-    lcb_list_insert(list->prev, list, item);
+    list_insert(list->prev, list, item);
 }
 
-static void lcb_list_eject(lcb_list_t *prev, lcb_list_t *next)
+static void list_eject(lcb_list_t *prev, lcb_list_t *next)
 {
     next->prev = prev;
     prev->next = next;
@@ -49,7 +49,7 @@ static void lcb_list_eject(lcb_list_t *prev, lcb_list_t *next)
 
 void lcb_list_delete(lcb_list_t *item)
 {
-    lcb_list_eject(item->prev, item->next);
+    list_eject(item->prev, item->next);
     item->next = item->prev = NULL;
 }
 
@@ -94,13 +94,51 @@ void lcb_list_add_sorted(lcb_list_t *list, lcb_list_t *item, lcb_list_cmp_fn cmp
     lcb_list_t *p;
 
     if (LCB_LIST_IS_EMPTY(list)) {
-        lcb_list_insert(list->prev, list, item);
+        list_insert(list->prev, list, item);
     } else {
         LCB_LIST_FOR(p, list) {
             if (cmp(item, p) < 0) {
                 break;
             }
         }
-        lcb_list_insert(p->prev, p, item);
+        list_insert(p->prev, p, item);
     }
+}
+
+
+void lcb_clist_init(lcb_clist_t *cl)
+{
+    lcb_list_init((lcb_list_t*)cl);
+    cl->size = 0;
+}
+void lcb_clist_append(lcb_clist_t *cl, lcb_list_t *item)
+{
+    lcb_list_append((lcb_list_t*)cl, item);
+    cl->size++;
+}
+void lcb_clist_prepend(lcb_clist_t *cl, lcb_list_t *item)
+{
+    lcb_list_prepend((lcb_list_t *)cl, item);
+    cl->size++;
+}
+void lcb_clist_delete(lcb_clist_t *cl, lcb_list_t *item)
+{
+    lcb_list_delete(item);
+    cl->size--;
+}
+lcb_list_t *lcb_clist_pop(lcb_clist_t *cl)
+{
+    lcb_list_t *ret = lcb_list_pop((lcb_list_t*)cl);
+    if (ret) {
+        cl->size--;
+    }
+    return ret;
+}
+lcb_list_t *lcb_clist_shift(lcb_clist_t *cl)
+{
+    lcb_list_t *ret = lcb_list_shift((lcb_list_t *)cl);
+    if (ret) {
+        cl->size--;
+    }
+    return ret;
 }

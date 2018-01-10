@@ -1,6 +1,6 @@
 /* -*- Mode: C; tab-width: 4; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
- *     Copyright 2011-2012 Couchbase, Inc.
+ *     Copyright 2011-2015 Couchbase, Inc.
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -23,82 +23,81 @@
  * I decided I'd rather just make it easy to work with...
  */
 struct lcb_histogram_st {
+    /** The highest value (number of ocurrences ) in all of the buckets */
+    lcb_U32 max;
+
+    /** Number of entries below a microsecond */
+    lcb_U32 nsec;
+
     /**
-     * The highest value in all of the buckets
+     * Entries between 1-1000 microseconds. Each array element refers to a
+     * 10 microsecond interval
      */
-    lcb_uint32_t max;
+    lcb_U32 usec[100];
+
     /**
-     * The first bucket is the nano-second batches.. it contains
-     * all operations that was completed in < 1usec..
+     * Entries between 1-10 milliseconds. Each array entry refers to a 100
+     * microsecond interval.
      */
-    lcb_uint32_t nsec;
+    lcb_U32 lt10msec[100];
+
     /**
-     * We're collecting measurements on a per 10 usec
+     * Entries between 10-1000 milliseconds. Each entry refers to a 10 millisecond
+     * interval
      */
-    lcb_uint32_t usec[100];
-    /**
-     * We're collecting measurements on a per 10 msec
-     */
-    lcb_uint32_t msec[100];
+    lcb_U32 msec[100];
+
     /**
      * Seconds are collected per sec
      */
-    lcb_uint32_t sec[10];
+    lcb_U32 sec[10];
 };
 
-LIBCOUCHBASE_API
-lcb_error_t lcb_enable_timings(lcb_t instance)
+LCB_INTERNAL_API
+lcb_HISTOGRAM *
+lcb_histogram_create(void)
 {
-    if (instance->histogram != NULL) {
-        return LCB_KEY_EEXISTS;
-    }
-
-    instance->histogram = calloc(1, sizeof(*instance->histogram));
-    return instance->histogram == NULL ? LCB_CLIENT_ENOMEM : LCB_SUCCESS;
+    return calloc(1, sizeof(lcb_HISTOGRAM));
 }
 
-LIBCOUCHBASE_API
-lcb_error_t lcb_disable_timings(lcb_t instance)
+LCB_INTERNAL_API
+void
+lcb_histogram_destroy(lcb_HISTOGRAM *hg)
 {
-    if (instance->histogram == NULL) {
-        return LCB_KEY_ENOENT;
-    }
-
-    free(instance->histogram);
-    instance->histogram = NULL;
-    return LCB_SUCCESS;
+    free(hg);
 }
 
-LIBCOUCHBASE_API
-lcb_error_t lcb_get_timings(lcb_t instance,
-                            const void *cookie,
-                            lcb_timings_callback callback)
+
+LCB_INTERNAL_API
+void
+lcb_histogram_read(const lcb_HISTOGRAM *hg,
+    const void *cookie, lcb_HISTOGRAM_CALLBACK callback)
 {
-    lcb_uint32_t max;
-    lcb_uint32_t start;
-    lcb_uint32_t ii;
-    lcb_uint32_t end;
+    lcb_U32 max, start, ii, end;
 
-    if (instance->histogram == NULL) {
-        return LCB_KEY_ENOENT;
-    }
-
-    max = instance->histogram->max;
+    max = hg->max;
     /*
     ** @todo I should merge "empty" sets.. currently I'm only going to
     ** report the nonzero ones...
     */
-    if (instance->histogram->nsec) {
-        callback(instance, cookie, LCB_TIMEUNIT_NSEC, 0, 999,
-                 instance->histogram->nsec, max);
+    if (hg->nsec) {
+        callback(cookie, LCB_TIMEUNIT_NSEC, 0, 999, hg->nsec, max);
     }
 
     start = 1;
     for (ii = 0; ii < 100; ++ii) {
         end = (ii + 1) * 10 - 1;
-        if (instance->histogram->usec[ii]) {
-            callback(instance, cookie, LCB_TIMEUNIT_USEC, start, end,
-                     instance->histogram->usec[ii], max);
+        if (hg->usec[ii]) {
+            callback(cookie, LCB_TIMEUNIT_USEC, start, end, hg->usec[ii], max);
+        }
+        start = end + 1;
+    }
+
+    start = 1000;
+    for (ii = 0; ii < 100; ++ii) {
+        end = (ii + 1) * 100 - 1;
+        if (hg->lt10msec[ii]) {
+            callback(cookie, LCB_TIMEUNIT_USEC, start, end, hg->lt10msec[ii], max);
         }
         start = end + 1;
     }
@@ -106,71 +105,103 @@ lcb_error_t lcb_get_timings(lcb_t instance,
     start = 1;
     for (ii = 0; ii < 100; ++ii) {
         end = (ii + 1) * 10 - 1;
-        if (instance->histogram->msec[ii]) {
-            callback(instance, cookie, LCB_TIMEUNIT_MSEC, start, end,
-                     instance->histogram->msec[ii], max);
+        if (hg->msec[ii]) {
+            callback(cookie, LCB_TIMEUNIT_MSEC, start, end, hg->msec[ii], max);
         }
         start = end + 1;
     }
 
-    start = 1;
-    for (ii = 0; ii < 9; ++ii) {
-        end = ii + 1;
-        if (instance->histogram->sec[ii]) {
-            callback(instance, cookie, LCB_TIMEUNIT_SEC, start, end,
-                     instance->histogram->sec[ii], max);
+    for (ii = 1; ii < 9; ++ii) {
+        start = ii * 1000;
+        end = ((ii + 1) * 1000) - 1;
+        if (hg->sec[ii]) {
+            callback(cookie, LCB_TIMEUNIT_MSEC, start, end, hg->sec[ii], max);
         }
-        start = end + 1;
     }
 
-    if (instance->histogram->sec[9]) {
-        callback(instance, cookie, LCB_TIMEUNIT_SEC, 9, 99999,
-                 instance->histogram->sec[9], max);
+    if (hg->sec[9]) {
+        callback(cookie, LCB_TIMEUNIT_SEC, 9, 9999, hg->sec[9], max);
     }
-    return LCB_SUCCESS;
 }
 
-void lcb_record_metrics(lcb_t instance,
-                        hrtime_t delta,
-                        uint8_t opcode)
-{
+static void
+default_timings_callback(const void *cookie,
+                         lcb_timeunit_t timeunit,
+                         lcb_uint32_t min_val, lcb_uint32_t max_val,
+                         lcb_uint32_t total, lcb_uint32_t maxtotal) {
+    FILE* stream = (FILE*)cookie;
+    const char *unit = NULL;
     int ii;
-    (void)opcode;
-    if (instance->histogram == NULL) {
-        return;
+    int num_hash;
+
+    fprintf(stream, "[%-4u - %-4u]", min_val, max_val);
+    if (timeunit == LCB_TIMEUNIT_NSEC) {
+        unit = "ns";
+    } else if (timeunit == LCB_TIMEUNIT_USEC) {
+        unit = "us";
+    } else if (timeunit == LCB_TIMEUNIT_MSEC) {
+        unit = "ms";
+    } else if (timeunit == LCB_TIMEUNIT_SEC) {
+        unit = "s";
+    } else {
+        unit = "?";
+    }
+    fprintf(stream, "%s |", unit);
+
+    num_hash = (int)((float)40.0 * (float)total / (float)maxtotal);
+
+    for (ii = 0; ii < num_hash; ++ii) {
+        putw('#', stream);
     }
 
-    ii = 0;
-    while (delta > 1000 && ii < 4) {
-        ++ii;
-        delta /= 1000;
-    }
+    fprintf(stream, " - %u\n", total);
+}
 
-    switch (ii) {
-    case 0:
-        if (++instance->histogram->nsec > instance->histogram->max) {
-            instance->histogram->max = instance->histogram->nsec;
+
+LCB_INTERNAL_API
+void lcb_histogram_print(lcb_HISTOGRAM* hg, FILE* stream)
+{
+    lcb_histogram_read(hg, stream, default_timings_callback);
+}
+
+
+LCB_INTERNAL_API
+void
+lcb_histogram_record(lcb_HISTOGRAM *hg, lcb_U64 delta)
+{
+    lcb_U32 num;
+
+    if (delta < 1000) {
+        /* nsec */
+        if (++hg->nsec > hg->max) {
+            hg->max = hg->nsec;
         }
-        break;
-    case 1:
-        if (++instance->histogram->usec[delta / 10] > instance->histogram->max) {
-            instance->histogram->max = instance->histogram->usec[delta / 10];
+    } else if (delta < LCB_US2NS(1000)) {
+        /* micros */
+        delta /= LCB_US2NS(1);
+        if ((num = ++hg->usec[delta/10]) > hg->max) {
+            hg->max = num;
         }
-        break;
-    case 2:
-        if (++instance->histogram->msec[delta / 10] > instance->histogram->max) {
-            instance->histogram->max = instance->histogram->msec[delta / 10];
+    } else if (delta < LCB_US2NS(10000)) {
+        /* 1-10ms */
+        delta /= LCB_US2NS(1);
+        assert(delta <= 10000);
+        if ((num = ++hg->lt10msec[delta/100]) > hg->max) {
+            hg->max = num;
         }
-        break;
-    default:
-        if (delta < 9) {
-            if (++instance->histogram->sec[delta] > instance->histogram->max) {
-                instance->histogram->max = instance->histogram->sec[delta];
-            }
-        } else {
-            if (++instance->histogram->sec[9] > instance->histogram->max) {
-                instance->histogram->max = instance->histogram->sec[9];
-            }
+    } else if (delta < LCB_S2NS(1)) {
+        delta /= LCB_US2NS(1000);
+        if ((num = ++hg->msec[delta/10]) > hg->max) {
+            hg->max = num;
+        }
+    } else {
+        delta /= LCB_S2NS(1);
+        if (delta > 9) {
+            delta = 9;
+        }
+
+        if ((num = ++hg->sec[delta]) > hg->max) {
+            hg->max = num;
         }
     }
 }

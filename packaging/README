@@ -1,14 +1,7 @@
-DEB (Debian, Ubuntu, etc.)
-==========================
+These files contain the underlying metadata templates for building deb and
+rpm packages. To build a local package, do `make dist-deb` or `make dist-rpm`
+from within the top level directory.
 
-Install toolchain for building packages (`dkpg-buildpackage`, `dch` etc.)
-
-    # apt-get install build-essential fakeroot devscripts dpkg-dev gnupg \
-      debhelper
-
-RPM (CentOS, RHEL, SUSE, etc.)
-==============================
-
-Install `rpmbuild` tool:
-
-    # yum install rpm-build
+To build public signed packages, inspect the
+[lcbpackage](https://github.com/couchbaselabs/lcbpackage) for the necessary
+tooling

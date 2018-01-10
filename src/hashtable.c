@@ -16,7 +16,7 @@
  */
 
 #include "internal.h"
-#include "genhash.h"
+#include "contrib/genhash/genhash.h"
 
 /**
  * Structures for common hash table operations
@@ -42,7 +42,34 @@ static struct lcb_hash_ops hashops_nocopy = {
     NULL, /* freeValue */
 };
 
-genhash_t *lcb_hashtable_nc_new(int est)
+genhash_t *lcb_hashtable_nc_new(lcb_size_t est)
 {
     return genhash_init(est, hashops_nocopy);
+}
+
+
+static int u32_hash(const void *p, lcb_size_t n)
+{
+    (void)p;
+    return n;
+}
+
+static int u32_eq(const void *a, lcb_size_t n_a, const void *b, lcb_size_t n_b)
+{
+    (void)a; (void)b;
+    return n_a == n_b;
+}
+
+static struct lcb_hash_ops hashops_u32 = {
+        u32_hash,
+        u32_eq,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+};
+
+genhash_t *lcb_hashtable_szt_new(lcb_size_t est)
+{
+    return genhash_init(est, hashops_u32);
 }

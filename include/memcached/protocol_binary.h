@@ -33,15 +33,20 @@
  * Author: Trond Norbye <trond.norbye@sun.com>
  */
 
+/**
+ * THIS IS A SLIMMED DOWN VERSION FOR LIBCOUCHBASE!
+ * It only contains constants used by the library. The header in the
+ * memcached source code contains all of the commands actually used.
+ */
+
 #ifndef PROTOCOL_BINARY_H
 #define PROTOCOL_BINARY_H
 
-#if !defined HAVE_STDINT_H && defined _WIN32
+#if !defined HAVE_STDINT_H && defined _WIN32 && defined(_MSC_VER)
 # include "win_stdint.h"
 #else
 # include <stdint.h>
 #endif
-#include <memcached/vbucket.h>
 
 /**
  * \addtogroup Protocol
@@ -70,26 +75,189 @@ extern "C"
 
     /**
      * Definition of the valid response status numbers.
-     * See section 3.2 Response Status
+     *
+     * A well written client should be "future proof" by handling new
+     * error codes to be defined. Note that new error codes means that
+     * the requested operation wasn't performed.
      */
     typedef enum {
+        /** The operation completed successfully */
         PROTOCOL_BINARY_RESPONSE_SUCCESS = 0x00,
+        /** The key does not exists */
         PROTOCOL_BINARY_RESPONSE_KEY_ENOENT = 0x01,
+        /** The key exists in the cluster (with another CAS value) */
         PROTOCOL_BINARY_RESPONSE_KEY_EEXISTS = 0x02,
+        /** The document exceeds the maximum size */
         PROTOCOL_BINARY_RESPONSE_E2BIG = 0x03,
+        /** Invalid request */
         PROTOCOL_BINARY_RESPONSE_EINVAL = 0x04,
+        /** The document was not stored for some reason. This is
+         * currently a "catch all" for number or error situations, and
+         * should be split into multiple error codes. */
         PROTOCOL_BINARY_RESPONSE_NOT_STORED = 0x05,
+        /** Non-numeric server-side value for incr or decr */
         PROTOCOL_BINARY_RESPONSE_DELTA_BADVAL = 0x06,
+        /** The server is not responsible for the requested vbucket */
         PROTOCOL_BINARY_RESPONSE_NOT_MY_VBUCKET = 0x07,
+        /** Not connected to a bucket */
+        PROTOCOL_BINARY_RESPONSE_NO_BUCKET = 0x08,
+        /** The requested resource is locked */
+        PROTOCOL_BINARY_RESPONSE_LOCKED = 0x09,
+
+        /** The authentication context is stale. You should reauthenticate*/
+        PROTOCOL_BINARY_RESPONSE_AUTH_STALE = 0x1f,
+        /** Authentication failure (invalid user/password combination,
+         * OR an internal error in the authentication library. Could
+         * be a misconfigured SASL configuration. See server logs for
+         * more information.) */
         PROTOCOL_BINARY_RESPONSE_AUTH_ERROR = 0x20,
+        /** Authentication OK so far, please continue */
         PROTOCOL_BINARY_RESPONSE_AUTH_CONTINUE = 0x21,
+        /** The requested value is outside the legal range
+         * (similar to EINVAL, but more specific) */
         PROTOCOL_BINARY_RESPONSE_ERANGE = 0x22,
+
+        /** No access (could be opcode, value, bucket etc) */
+        PROTOCOL_BINARY_RESPONSE_EACCESS = 0x24,
+        /** The Couchbase cluster is currently initializing this
+         * node, and the Cluster manager has not yet granted all
+         * users access to the cluster. */
+        PROTOCOL_BINARY_RESPONSE_NOT_INITIALIZED = 0x25,
+
+        /** The server have no idea what this command is for */
         PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND = 0x81,
+        /** Not enough memory */
         PROTOCOL_BINARY_RESPONSE_ENOMEM = 0x82,
+        /** The server does not support this command */
         PROTOCOL_BINARY_RESPONSE_NOT_SUPPORTED = 0x83,
+        /** An internal error in the server */
         PROTOCOL_BINARY_RESPONSE_EINTERNAL = 0x84,
+        /** The system is currently too busy to handle the request.
+         * it is _currently_ only being used by the scrubber in
+         * default_engine to run a task there may only be one of
+         * (subsequent requests to start it would return ebusy until
+         * it's done). */
         PROTOCOL_BINARY_RESPONSE_EBUSY = 0x85,
-        PROTOCOL_BINARY_RESPONSE_ETMPFAIL = 0x86
+        /** A temporary error condition occurred. Retrying the
+         * operation may resolve the problem. This could be that the
+         * server is in a degraded situation (like running warmup on
+         * the node), the vbucket could be in an "incorrect" state, a
+         * temporary failure from the underlying persistence layer,
+         * etc).
+         */
+        PROTOCOL_BINARY_RESPONSE_ETMPFAIL = 0x86,
+        /**
+         * There is something wrong with the syntax of the provided
+         * XATTR.
+         */
+        PROTOCOL_BINARY_RESPONSE_XATTR_EINVAL = 0x87,
+
+        /**
+         * Operation attempted with an unknown collection.
+         */
+        PROTOCOL_BINARY_RESPONSE_UNKNOWN_COLLECTION = 0x88,
+
+        /*
+         * Sub-document specific responses.
+         */
+
+        /** The provided path does not exist in the document. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_PATH_ENOENT = 0xc0,
+
+        /** One of path components treats a non-dictionary as a dictionary, or
+         * a non-array as an array.
+         * [Arithmetic operations only] The value the path points to is not
+         * a number. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_PATH_MISMATCH = 0xc1,
+
+        /** The path’s syntax was incorrect. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_PATH_EINVAL = 0xc2,
+
+        /** The path provided is too large; either the string is too long,
+         * or it contains too many components. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_PATH_E2BIG = 0xc3,
+
+        /** The document has too many levels to parse. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_DOC_E2DEEP = 0xc4,
+
+        /** [For mutations only] The value provided will invalidate the JSON if
+         * inserted. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_VALUE_CANTINSERT = 0xc5,
+
+        /** The existing document is not valid JSON. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_DOC_NOTJSON = 0xc6,
+
+        /** [For arithmetic ops] The existing number is out of the valid range
+         * for arithmetic ops (cannot be represented as an int64_t). */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_NUM_ERANGE = 0xc7,
+
+        /** [For arithmetic ops] The operation would result in a number
+         * outside the valid range (cannot be represented as an int64_t). */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_DELTA_ERANGE = 0xc8,
+
+        /** [For mutations only] The requested operation requires the path to
+         * not already exist, but it exists. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_PATH_EEXISTS = 0xc9,
+
+        /** [For mutations only] Inserting the value would cause the document
+         * to be too deep. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_VALUE_ETOODEEP = 0xca,
+
+        /** [For multi-path commands only] An invalid combination of commands
+         * was specified. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_INVALID_COMBO = 0xcb,
+
+        /** [For multi-path commands only] Specified key was successfully
+         * found, but one or more path operations failed. Examine the individual
+         * lookup_result (MULTI_LOOKUP) / mutation_result (MULTI_MUTATION)
+         * structures for details. */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_MULTI_PATH_FAILURE = 0xcc,
+
+        /**
+         * The operation completed successfully, but operated on a deleted
+         * document.
+         */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_SUCCESS_DELETED = 0xcd,
+
+        /**
+         * The combination of the subdoc flags for the xattrs doesn't make
+         * any sense
+         */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_XATTR_INVALID_FLAG_COMBO = 0xce,
+
+        /**
+         * Only a single xattr key may be accessed at the same time.
+         */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_XATTR_INVALID_KEY_COMBO = 0xcf,
+
+        /**
+         * The server has no knowledge of the requested macro
+         */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_XATTR_UNKNOWN_MACRO = 0xd0,
+
+        /**
+         * The server has no knowledge of the requested virtual xattr
+         */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_XATTR_UNKNOWN_VATTR = 0xd1,
+
+        /**
+         * Virtual xattrs can't be modified
+         */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_XATTR_CANT_MODIFY_VATTR = 0xd2,
+
+        /**
+         * [For multi-path commands only] Specified key was found as a
+         * Deleted document, but one or more path operations
+         * failed. Examine the individual lookup_result (MULTI_LOOKUP) /
+         * mutation_result (MULTI_MUTATION) structures for details.
+         */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_MULTI_PATH_FAILURE_DELETED = 0xd3,
+
+        /**
+         * According to the spec all xattr commands should come first,
+         * followed by the commands for the document body
+         */
+        PROTOCOL_BINARY_RESPONSE_SUBDOC_INVALID_XATTR_ORDER = 0xd4
     } protocol_binary_response_status;
 
     /**
@@ -104,96 +272,82 @@ extern "C"
         PROTOCOL_BINARY_CMD_DELETE = 0x04,
         PROTOCOL_BINARY_CMD_INCREMENT = 0x05,
         PROTOCOL_BINARY_CMD_DECREMENT = 0x06,
-        PROTOCOL_BINARY_CMD_QUIT = 0x07,
         PROTOCOL_BINARY_CMD_FLUSH = 0x08,
-        PROTOCOL_BINARY_CMD_GETQ = 0x09,
+        PROTOCOL_BINARY_CMD_GETQ = 0x09 /* Used in tests */,
         PROTOCOL_BINARY_CMD_NOOP = 0x0a,
         PROTOCOL_BINARY_CMD_VERSION = 0x0b,
-        PROTOCOL_BINARY_CMD_GETK = 0x0c,
-        PROTOCOL_BINARY_CMD_GETKQ = 0x0d,
         PROTOCOL_BINARY_CMD_APPEND = 0x0e,
         PROTOCOL_BINARY_CMD_PREPEND = 0x0f,
         PROTOCOL_BINARY_CMD_STAT = 0x10,
-        PROTOCOL_BINARY_CMD_SETQ = 0x11,
-        PROTOCOL_BINARY_CMD_ADDQ = 0x12,
-        PROTOCOL_BINARY_CMD_REPLACEQ = 0x13,
-        PROTOCOL_BINARY_CMD_DELETEQ = 0x14,
-        PROTOCOL_BINARY_CMD_INCREMENTQ = 0x15,
-        PROTOCOL_BINARY_CMD_DECREMENTQ = 0x16,
-        PROTOCOL_BINARY_CMD_QUITQ = 0x17,
-        PROTOCOL_BINARY_CMD_FLUSHQ = 0x18,
-        PROTOCOL_BINARY_CMD_APPENDQ = 0x19,
-        PROTOCOL_BINARY_CMD_PREPENDQ = 0x1a,
         PROTOCOL_BINARY_CMD_VERBOSITY = 0x1b,
         PROTOCOL_BINARY_CMD_TOUCH = 0x1c,
         PROTOCOL_BINARY_CMD_GAT = 0x1d,
-        PROTOCOL_BINARY_CMD_GATQ = 0x1e,
+        PROTOCOL_BINARY_CMD_HELLO = 0x1f,
 
         PROTOCOL_BINARY_CMD_SASL_LIST_MECHS = 0x20,
         PROTOCOL_BINARY_CMD_SASL_AUTH = 0x21,
         PROTOCOL_BINARY_CMD_SASL_STEP = 0x22,
 
-        /* These commands are used for range operations and exist within
-         * this header for use in other projects.  Range operations are
-         * not expected to be implemented in the memcached server itself.
+        PROTOCOL_BINARY_CMD_GET_REPLICA = 0x83,
+
+        PROTOCOL_BINARY_CMD_SELECT_BUCKET = 0x89,
+
+        PROTOCOL_BINARY_CMD_OBSERVE_SEQNO = 0x91,
+        PROTOCOL_BINARY_CMD_OBSERVE = 0x92,
+
+        PROTOCOL_BINARY_CMD_GET_LOCKED = 0x94,
+        PROTOCOL_BINARY_CMD_UNLOCK_KEY = 0x95,
+
+        PROTOCOL_BINARY_CMD_GET_CLUSTER_CONFIG = 0xb5,
+
+        /**
+         * Commands for the Sub-document API.
          */
-        PROTOCOL_BINARY_CMD_RGET      = 0x30,
-        PROTOCOL_BINARY_CMD_RSET      = 0x31,
-        PROTOCOL_BINARY_CMD_RSETQ     = 0x32,
-        PROTOCOL_BINARY_CMD_RAPPEND   = 0x33,
-        PROTOCOL_BINARY_CMD_RAPPENDQ  = 0x34,
-        PROTOCOL_BINARY_CMD_RPREPEND  = 0x35,
-        PROTOCOL_BINARY_CMD_RPREPENDQ = 0x36,
-        PROTOCOL_BINARY_CMD_RDELETE   = 0x37,
-        PROTOCOL_BINARY_CMD_RDELETEQ  = 0x38,
-        PROTOCOL_BINARY_CMD_RINCR     = 0x39,
-        PROTOCOL_BINARY_CMD_RINCRQ    = 0x3a,
-        PROTOCOL_BINARY_CMD_RDECR     = 0x3b,
-        PROTOCOL_BINARY_CMD_RDECRQ    = 0x3c,
-        /* End Range operations */
 
-        /* VBucket commands */
-        PROTOCOL_BINARY_CMD_SET_VBUCKET = 0x3d,
-        PROTOCOL_BINARY_CMD_GET_VBUCKET = 0x3e,
-        PROTOCOL_BINARY_CMD_DEL_VBUCKET = 0x3f,
-        /* End VBucket commands */
+        /* Retrieval commands */
+        PROTOCOL_BINARY_CMD_SUBDOC_GET = 0xc5,
+        PROTOCOL_BINARY_CMD_SUBDOC_EXISTS = 0xc6,
 
-        /* TAP commands */
-        PROTOCOL_BINARY_CMD_TAP_CONNECT = 0x40,
-        PROTOCOL_BINARY_CMD_TAP_MUTATION = 0x41,
-        PROTOCOL_BINARY_CMD_TAP_DELETE = 0x42,
-        PROTOCOL_BINARY_CMD_TAP_FLUSH = 0x43,
-        PROTOCOL_BINARY_CMD_TAP_OPAQUE = 0x44,
-        PROTOCOL_BINARY_CMD_TAP_VBUCKET_SET = 0x45,
-        PROTOCOL_BINARY_CMD_TAP_CHECKPOINT_START = 0x46,
-        PROTOCOL_BINARY_CMD_TAP_CHECKPOINT_END = 0x47,
-        /* End TAP */
+        /* Dictionary commands */
+        PROTOCOL_BINARY_CMD_SUBDOC_DICT_ADD = 0xc7,
+        PROTOCOL_BINARY_CMD_SUBDOC_DICT_UPSERT = 0xc8,
 
-        PROTOCOL_BINARY_CMD_LAST_RESERVED = 0x8f,
+        /* Generic modification commands */
+        PROTOCOL_BINARY_CMD_SUBDOC_DELETE = 0xc9,
+        PROTOCOL_BINARY_CMD_SUBDOC_REPLACE = 0xca,
 
-        /* Scrub the data */
-        PROTOCOL_BINARY_CMD_SCRUB = 0xf0,
-        /* Refresh the ISASL data */
-        PROTOCOL_BINARY_CMD_ISASL_REFRESH = 0xf1
+        /* Array commands */
+        PROTOCOL_BINARY_CMD_SUBDOC_ARRAY_PUSH_LAST = 0xcb,
+        PROTOCOL_BINARY_CMD_SUBDOC_ARRAY_PUSH_FIRST = 0xcc,
+        PROTOCOL_BINARY_CMD_SUBDOC_ARRAY_INSERT = 0xcd,
+        PROTOCOL_BINARY_CMD_SUBDOC_ARRAY_ADD_UNIQUE = 0xce,
+
+        /* Arithmetic commands */
+        PROTOCOL_BINARY_CMD_SUBDOC_COUNTER = 0xcf,
+
+        /* Multi-Path commands */
+        PROTOCOL_BINARY_CMD_SUBDOC_MULTI_LOOKUP = 0xd0,
+        PROTOCOL_BINARY_CMD_SUBDOC_MULTI_MUTATION = 0xd1,
+
+        /* Subdoc additions for Spock: */
+        PROTOCOL_BINARY_CMD_SUBDOC_GET_COUNT = 0xd2,
+
+        /* get error code mappings */
+        PROTOCOL_BINARY_CMD_GET_ERROR_MAP = 0xfe,
+
+        /* Reserved for being able to signal invalid opcode */
+        PROTOCOL_BINARY_CMD_INVALID = 0xff
     } protocol_binary_command;
 
     /**
      * Definition of the data types in the packet
      * See section 3.4 Data Types
-     * If you specify a value != 0 you should interpret the byte
-     * as a "bitmask".
-     *   .... ...0 = Format: raw bytes
-     *   .... .00. = Compression: none
-     *   0000 0... = Reserved
      */
     typedef enum {
-        PROTOCOL_BINARY_RAW_BYTES = 0x00
-#define PROTOCOL_BINARY_DATATYPE_JSON 0x01
-#define PROTOCOL_BINARY_DATATYPE_GZIP 0x02
-#define PROTOCOL_BINARY_DATATYPE_BZIP 0x04
-#define PROTOCOL_BINARY_DATATYPE_LZO  0x06
+        PROTOCOL_BINARY_RAW_BYTES = 0x00,
+        PROTOCOL_BINARY_DATATYPE_JSON = 0x01,
+        PROTOCOL_BINARY_DATATYPE_COMPRESSED = 0x02
     } protocol_binary_datatypes;
-
 
     /**
      * Definition of the header structure for a request packet.
@@ -253,14 +407,6 @@ extern "C"
         uint8_t bytes[sizeof(protocol_binary_response_header)];
     } protocol_binary_response_no_extras;
 
-    /**
-     * Definition of the packet used by the get, getq, getk and getkq command.
-     * See section 4
-     */
-    typedef protocol_binary_request_no_extras protocol_binary_request_get;
-    typedef protocol_binary_request_no_extras protocol_binary_request_getq;
-    typedef protocol_binary_request_no_extras protocol_binary_request_getk;
-    typedef protocol_binary_request_no_extras protocol_binary_request_getkq;
 
     /**
      * Definition of the packet returned from a successful get, getq, getk and
@@ -277,9 +423,8 @@ extern "C"
         uint8_t bytes[sizeof(protocol_binary_response_header) + 4];
     } protocol_binary_response_get;
 
+    /* used by tests */
     typedef protocol_binary_response_get protocol_binary_response_getq;
-    typedef protocol_binary_response_get protocol_binary_response_getk;
-    typedef protocol_binary_response_get protocol_binary_response_getkq;
 
     /**
      * Definition of the packet used by the delete command
@@ -290,30 +435,16 @@ extern "C"
     /**
      * Definition of the packet returned by the delete command
      * See section 4
+     *
+     * extlen should be either zero, or 16 if the client has enabled the
+     * MUTATION_SEQNO feature, with the following format:
+     *
+     *   Header:           (0-23): <protocol_binary_response_header>
+     *   Extras:
+     *     Vbucket UUID   (24-31): 0x0000000000003039
+     *     Seqno          (32-39): 0x000000000000002D
      */
     typedef protocol_binary_response_no_extras protocol_binary_response_delete;
-
-    /**
-     * Definition of the packet used by the flush command
-     * See section 4
-     * Please note that the expiration field is optional, so remember to see
-     * check the header.bodysize to see if it is present.
-     */
-    typedef union {
-        struct {
-            protocol_binary_request_header header;
-            struct {
-                uint32_t expiration;
-            } body;
-        } message;
-        uint8_t bytes[sizeof(protocol_binary_request_header) + 4];
-    } protocol_binary_request_flush;
-
-    /**
-     * Definition of the packet returned by the flush command
-     * See section 4
-     */
-    typedef protocol_binary_response_no_extras protocol_binary_response_flush;
 
     /**
      * Definition of the packet used by set, add and replace
@@ -329,28 +460,6 @@ extern "C"
         } message;
         uint8_t bytes[sizeof(protocol_binary_request_header) + 8];
     } protocol_binary_request_set;
-    typedef protocol_binary_request_set protocol_binary_request_add;
-    typedef protocol_binary_request_set protocol_binary_request_replace;
-
-    /**
-     * Definition of the packet returned by set, add and replace
-     * See section 4
-     */
-    typedef protocol_binary_response_no_extras protocol_binary_response_set;
-    typedef protocol_binary_response_no_extras protocol_binary_response_add;
-    typedef protocol_binary_response_no_extras protocol_binary_response_replace;
-
-    /**
-     * Definition of the noop packet
-     * See section 4
-     */
-    typedef protocol_binary_request_no_extras protocol_binary_request_noop;
-
-    /**
-     * Definition of the packet returned by the noop command
-     * See section 4
-     */
-    typedef protocol_binary_response_no_extras protocol_binary_response_noop;
 
     /**
      * Definition of the structure used by the increment and decrement
@@ -373,50 +482,21 @@ extern "C"
     /**
      * Definition of the response from an incr or decr command
      * command.
-     * See section 4
+     *
+     * The result of the incr/decr is a uint64_t placed at header + extlen.
+     *
+     * extlen should be either zero, or 16 if the client has enabled the
+     * MUTATION_SEQNO feature, with the following format:
+     *
+     *   Header:           (0-23): <protocol_binary_response_header>
+     *   Extras:
+     *     Vbucket UUID   (24-31): 0x0000000000003039
+     *     Seqno          (32-39): 0x000000000000002D
+     *   Value:           (40-47): ....
+     *
      */
-    typedef union {
-        struct {
-            protocol_binary_response_header header;
-            struct {
-                uint64_t value;
-            } body;
-        } message;
-        uint8_t bytes[sizeof(protocol_binary_response_header) + 8];
-    } protocol_binary_response_incr;
-    typedef protocol_binary_response_incr protocol_binary_response_decr;
-
-    /**
-     * Definition of the quit
-     * See section 4
-     */
-    typedef protocol_binary_request_no_extras protocol_binary_request_quit;
-
-    /**
-     * Definition of the packet returned by the quit command
-     * See section 4
-     */
-    typedef protocol_binary_response_no_extras protocol_binary_response_quit;
-
-    /**
-     * Definition of the packet used by append and prepend command
-     * See section 4
-     */
-    typedef protocol_binary_request_no_extras protocol_binary_request_append;
-    typedef protocol_binary_request_no_extras protocol_binary_request_prepend;
-
-    /**
-     * Definition of the packet returned from a successful append or prepend
-     * See section 4
-     */
-    typedef protocol_binary_response_no_extras protocol_binary_response_append;
-    typedef protocol_binary_response_no_extras protocol_binary_response_prepend;
-
-    /**
-     * Definition of the packet used by the version command
-     * See section 4
-     */
-    typedef protocol_binary_request_no_extras protocol_binary_request_version;
+    typedef protocol_binary_response_no_extras protocol_binary_response_incr;
+    typedef protocol_binary_response_no_extras protocol_binary_response_decr;
 
     /**
      * Definition of the packet returned from a successful version command
@@ -486,270 +566,304 @@ extern "C"
         uint8_t bytes[sizeof(protocol_binary_request_header) + 4];
     } protocol_binary_request_gat;
 
-    typedef protocol_binary_request_gat protocol_binary_request_gatq;
 
     /**
-     * Definition of the packet returned from the GAT(Q)
-     */
-    typedef protocol_binary_response_get protocol_binary_response_gat;
-    typedef protocol_binary_response_get protocol_binary_response_gatq;
-
-
-    /**
-     * Definition of a request for a range operation.
-     * See http://code.google.com/p/memcached/wiki/RangeOps
+     * Definition of the packet used by SUBDOCUMENT single-path commands.
      *
-     * These types are used for range operations and exist within
-     * this header for use in other projects.  Range operations are
-     * not expected to be implemented in the memcached server itself.
+     * The path, which is always required, is in the Body, after the Key.
+     *
+     *   Header:                        24 @0: <protocol_binary_request_header>
+     *   Extras:
+     *     Sub-document flags            1 @24: <protocol_binary_subdoc_flag>
+     *     Sub-document pathlen          2 @25: <variable>
+     *   Body:
+     *     Key                      keylen @27: <variable>
+     *     Path                    pathlen @27+keylen: <variable>
+     *     Value to insert/replace
+     *               vallen-keylen-pathlen @27+keylen+pathlen: [variable]
+     */
+    typedef union {
+        struct {
+            protocol_binary_request_header header;
+            struct {
+                uint16_t pathlen;      // Length in bytes of the sub-doc path.
+                uint8_t  subdoc_flags; // See protocol_binary_subdoc_flag
+            } extras;
+        } message;
+        uint8_t bytes[sizeof(protocol_binary_request_header) + 3];
+    } protocol_binary_request_subdocument;
+
+
+    /** Definition of the packet used by SUBDOCUMENT responses.
      */
     typedef union {
         struct {
             protocol_binary_response_header header;
-            struct {
-                uint16_t size;
-                uint8_t  reserved;
-                uint8_t  flags;
-                uint32_t max_results;
-            } body;
         } message;
-        uint8_t bytes[sizeof(protocol_binary_request_header) + 4];
-    } protocol_binary_request_rangeop;
+        uint8_t bytes[sizeof(protocol_binary_response_header)];
+    } protocol_binary_response_subdocument;
 
-    typedef protocol_binary_request_rangeop protocol_binary_request_rget;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rset;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rsetq;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rappend;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rappendq;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rprepend;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rprependq;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rdelete;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rdeleteq;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rincr;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rincrq;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rdecr;
-    typedef protocol_binary_request_rangeop protocol_binary_request_rdecrq;
+    /**
+     * Definition of the request packets used by SUBDOCUMENT multi-path commands.
+     *
+     * Multi-path sub-document commands differ from single-path in that they
+     * encode a series of multiple paths to operate on (from a single key).
+     * There are two multi-path commands - MULTI_LOOKUP and MULTI_MUTATION.
+     * - MULTI_LOOKUP consists of variable number of subdoc lookup commands
+     *                (SUBDOC_GET or SUBDOC_EXISTS).
+     * - MULTI_MUTATION consists of a variable number of subdoc mutation
+     *                  commands (i.e. all subdoc commands apart from
+     *                  SUBDOC_{GET,EXISTS}).
+     *
+     * Each path to be operated on is specified by an Operation Spec, which are
+     * contained in the body. This defines the opcode, path, and value
+     * (for mutations).
+     *
+     * A maximum of MULTI_MAX_PATHS paths (operations) can be encoded in a
+     * single multi-path command.
+     *
+     *  SUBDOC_MULTI_LOOKUP:
+     *    Header:                24 @0:  <protocol_binary_request_header>
+     *    Extras:                 0 @24: no extras
+     *    Body:         <variable>  @24:
+     *        Key            keylen @24: <variable>
+     *        1..MULTI_MAX_PATHS [Lookup Operation Spec]
+     *
+     *        Lookup Operation Spec:
+     *                            1 @0 : Opcode
+     *                            1 @1 : Flags
+     *                            2 @2 : Path Length
+     *                      pathlen @4 : Path
+     */
+    static const int PROTOCOL_BINARY_SUBDOC_MULTI_MAX_PATHS = 16;
+
+    typedef struct {
+        uint8_t opcode;
+        uint8_t flags;
+        uint16_t pathlen;
+     /* uint8_t path[pathlen] */
+    } protocol_binary_subdoc_multi_lookup_spec;
+
+    typedef protocol_binary_request_no_extras protocol_binary_request_subdocument_multi_lookup;
+
+    /*
+     *
+     * SUBDOC_MULTI_MUTATION
+     *    Header:                24 @0:  <protocol_binary_request_header>
+     *    Extras:                 0 @24:
+     *    Body:           variable  @24:
+     *        Key            keylen @24: <variable>
+     *        1..MULTI_MAX_PATHS [Mutation Operation Spec]
+     *
+     *        Mutation Operation Spec:
+     *                            1 @0         : Opcode
+     *                            1 @1         : Flags
+     *                            2 @2         : Path Length
+     *                            4 @4         : Value Length
+     *                      pathlen @8         : Path
+     *                       vallen @8+pathlen : Value
+     */
+    typedef struct {
+        uint8_t opcode;
+        uint8_t flags;
+        uint16_t pathlen;
+        uint32_t valuelen;
+     /* uint8_t path[pathlen] */
+     /* uint8_t value[valuelen]  */
+    } protocol_binary_subdoc_multi_mutation_spec;
+
+    typedef protocol_binary_request_no_extras protocol_binary_request_subdocument_multi_mutation;
+
+    /**
+     * Definition of the response packets used by SUBDOCUMENT multi-path
+     * commands.
+     *
+     * SUBDOC_MULTI_LOOKUP - Body consists of a series of lookup_result structs,
+     *                       one per lookup_spec in the request.
+     *
+     * Lookup Result:
+     *                            2 @0 : status
+     *                            4 @2 : resultlen
+     *                    resultlen @6 : result
+     */
+    typedef struct {
+        protocol_binary_request_header header;
+        /* Variable-length 1..PROTOCOL_BINARY_SUBDOC_MULTI_MAX_PATHS */
+        protocol_binary_subdoc_multi_lookup_spec body[1];
+    } protocol_binary_response_subdoc_multi_lookup;
+
+    /**
+     * SUBDOC_MULTI_MUTATION - Body is either empty (if all mutations
+     *                         successful), or contains the sub-code and
+     *                         index of the first failed mutation spec..
+     * Mutation Result (failure):
+     *                   2 @0 : Status code of first spec which failed.
+     *                   1 @2 : 0-based index of the first spec which failed.
+     */
+    typedef union {
+        struct {
+            protocol_binary_response_header header;
+        } message;
+        uint8_t bytes[sizeof(protocol_binary_response_header)];
+    } protocol_binary_response_subdoc_multi_mutation;
+
+    /**
+     * Definition of hello's features.
+     */
+    typedef enum {
+        PROTOCOL_BINARY_FEATURE_INVALID = 0x01,
+        PROTOCOL_BINARY_FEATURE_TLS = 0x2,
+        PROTOCOL_BINARY_FEATURE_TCPNODELAY = 0x03,
+        PROTOCOL_BINARY_FEATURE_MUTATION_SEQNO = 0x04,
+        PROTOCOL_BINARY_FEATURE_TCPDELAY = 0x05,
+        PROTOCOL_BINARY_FEATURE_XATTR = 0x06,
+        PROTOCOL_BINARY_FEATURE_XERROR = 0x07,
+        PROTOCOL_BINARY_FEATURE_SELECT_BUCKET = 0x08,
+        PROTOCOL_BINARY_FEATURE_COLLECTIONS = 0x09,
+        PROTOCOL_BINARY_FEATURE_SNAPPY = 0x0a,
+        PROTOCOL_BINARY_FEATURE_JSON = 0x0b,
+        PROTOCOL_BINARY_FEATURE_DUPLEX = 0x0c
+    } protocol_binary_hello_features;
+
+#define MEMCACHED_FIRST_HELLO_FEATURE 0x01
+#define MEMCACHED_TOTAL_HELLO_FEATURES 10
+
+    // clang-format off
+#define protocol_feature_2_text(a) \
+    (a == PROTOCOL_BINARY_FEATURE_INVALID) ? "Invalid" : \
+    (a == PROTOCOL_BINARY_FEATURE_TLS) ? "TLS" : \
+    (a == PROTOCOL_BINARY_FEATURE_TCPNODELAY) ? "TCP nodelay" : \
+    (a == PROTOCOL_BINARY_FEATURE_MUTATION_SEQNO) ? "Mutation seqno" : \
+    (a == PROTOCOL_BINARY_FEATURE_TCPDELAY) ? "TCP delay" : \
+    (a == PROTOCOL_BINARY_FEATURE_XATTR) ? "XATTR" : \
+    (a == PROTOCOL_BINARY_FEATURE_XERROR) ? "XERROR": \
+    (a == PROTOCOL_BINARY_FEATURE_SELECT_BUCKET) ? "Select bucket": \
+    (a == PROTOCOL_BINARY_FEATURE_COLLECTIONS) ? "Collections": \
+    (a == PROTOCOL_BINARY_FEATURE_SNAPPY) ? "Snappy": \
+    (a == PROTOCOL_BINARY_FEATURE_JSON) ? "JSON": \
+    (a == PROTOCOL_BINARY_FEATURE_DUPLEX) ? "Duplex": "Unknown"
+    // clang-format on
+
+    /**
+     * The HELLO command is used by the client and the server to agree
+     * upon the set of features the other end supports. It is initiated
+     * by the client by sending its agent string and the list of features
+     * it would like to use. The server will then reply with the list
+     * of the requested features it supports.
+     *
+     * ex:
+     * Client ->  HELLO [myclient 2.0] datatype, tls
+     * Server ->  HELLO SUCCESS datatype
+     *
+     * In this example the server responds that it allows the client to
+     * use the datatype extension, but not the tls extension.
+     */
 
 
     /**
-     * Definition of tap commands
-     * See To be written
-     *
+     * Definition of the packet requested by hello cmd.
+     * Key: This is a client-specific identifier (not really used by
+     *      the server, except for logging the HELLO and may therefore
+     *      be used to identify the client at a later time)
+     * Body: Contains all features supported by client. Each feature is
+     *       specified as an uint16_t in network byte order.
+     */
+    typedef protocol_binary_request_no_extras protocol_binary_request_hello;
+
+
+    /**
+     * Definition of the packet returned by hello cmd.
+     * Body: Contains all features requested by the client that the
+     *       server agrees to ssupport. Each feature is
+     *       specified as an uint16_t in network byte order.
+     */
+    typedef protocol_binary_response_no_extras protocol_binary_response_hello;
+
+    /**
+     * The message format for getLocked engine API
+     */
+    typedef protocol_binary_request_gat protocol_binary_request_getl;
+
+    /**
+     * Message format for CMD_GET_CONFIG
+     */
+    typedef protocol_binary_request_no_extras protocol_binary_request_get_cluster_config;
+
+#define OBS_STATE_NOT_PERSISTED 0x00
+#define OBS_STATE_PERSISTED     0x01
+#define OBS_STATE_NOT_FOUND     0x80
+#define OBS_STATE_LOGICAL_DEL   0x81
+
+    /**
+     * The PROTOCOL_BINARY_CMD_OBSERVE_SEQNO command is used by the
+     * client to retrieve information about the vbucket in order to
+     * find out if a particular mutation has been persisted or
+     * replicated at the server side. In order to do so, the client
+     * would pass the vbucket uuid of the vbucket that it wishes to
+     * observe to the serve.  The response would contain the last
+     * persisted sequence number and the latest sequence number in the
+     * vbucket. For example, if a client sends a request to observe
+     * the vbucket 0 with uuid 12345 and if the response contains the
+     * values <58, 65> and then the client can infer that sequence
+     * number 56 has been persisted, 60 has only been replicated and
+     * not been persisted yet and 68 has not been replicated yet.
      */
 
+    /**
+     * Definition of the request packet for the observe_seqno command.
+     *
+     * Header: Contains the vbucket id of the vbucket that the client
+     *         wants to observe.
+     *
+     * Body: Contains the vbucket uuid of the vbucket that the client
+     *       wants to observe. The vbucket uuid is of type uint64_t.
+     *
+     */
     typedef union {
         struct {
             protocol_binary_request_header header;
             struct {
-                /**
-                 * flags is a bitmask used to set properties for the
-                 * the connection. Please In order to be forward compatible
-                 * you should set all undefined bits to 0.
-                 *
-                 * If the bit require extra userdata, it will be stored
-                 * in the user-data field of the body (passed to the engine
-                 * as enginespeciffic). That means that when you parse the
-                 * flags and the engine-specific data, you have to work your
-                 * way from bit 0 and upwards to find the correct offset for
-                 * the data.
-                 *
-                 */
-                uint32_t flags;
-
-                /**
-                 * Backfill age
-                 *
-                 * By using this flag you can limit the amount of data being
-                 * transmitted. If you don't specify a backfill age, the
-                 * server will transmit everything it contains.
-                 *
-                 * The first 8 bytes in the engine specific data contains
-                 * the oldest entry (from epoc) you're interested in.
-                 * Specifying a time in the future (for the server you are
-                 * connecting to), will cause it to start streaming current
-                 * changes.
-                 */
-#define TAP_CONNECT_FLAG_BACKFILL 0x01
-                /**
-                 * Dump will cause the server to send the data stored on the
-                 * server, but disconnect when the keys stored in the server
-                 * are transmitted.
-                 */
-#define TAP_CONNECT_FLAG_DUMP 0x02
-                /**
-                 * The body contains a list of 16 bits words in network byte
-                 * order specifying the vbucket ids to monitor. The first 16
-                 * bit word contains the number of buckets. The number of 0
-                 * means "all buckets"
-                 */
-#define TAP_CONNECT_FLAG_LIST_VBUCKETS 0x04
-                /**
-                 * The responsibility of the vbuckets is to be transferred
-                 * over to the caller when all items are transferred.
-                 */
-#define TAP_CONNECT_FLAG_TAKEOVER_VBUCKETS 0x08
-                /**
-                 * The tap consumer supports ack'ing of tap messages
-                 */
-#define TAP_CONNECT_SUPPORT_ACK 0x10
-                /**
-                 * The tap consumer would prefer to just get the keys
-                 * back. If the engine supports this it will set
-                 * the TAP_FLAG_NO_VALUE flag in each of the
-                 * tap packets returned.
-                 */
-#define TAP_CONNECT_REQUEST_KEYS_ONLY 0x20
-                /**
-                 * The body contains a list of (vbucket_id, last_checkpoint_id)
-                 * pairs. This provides the checkpoint support in TAP streams.
-                 * The last checkpoint id represents the last checkpoint that
-                 * was successfully persisted.
-                 */
-#define TAP_CONNECT_CHECKPOINT 0x40
-                /**
-                 * The tap consumer is a registered tap client, which means that
-                 * the tap server will maintain its checkpoint cursor permanently.
-                 */
-#define TAP_CONNECT_REGISTERED_CLIENT 0x80
-
-                /**
-                 * The initial TAP implementation convert flags to/from network
-                 * byte order, but the values isn't stored in host local order
-                 * causing them to change if you mix platforms..
-                 */
-#define TAP_CONNECT_TAP_FIX_FLAG_BYTEORDER 0x100
-
-            } body;
-        } message;
-        uint8_t bytes[sizeof(protocol_binary_request_header) + 4];
-    } protocol_binary_request_tap_connect;
-
-    typedef union {
-        struct {
-            protocol_binary_request_header header;
-            struct {
-                struct {
-                    uint16_t enginespecific_length;
-                    /*
-                     * The flag section support the following flags
-                     */
-                    /**
-                     * Request that the consumer send a response packet
-                     * for this packet. The opaque field must be preserved
-                     * in the response.
-                     */
-#define TAP_FLAG_ACK 0x01
-                    /**
-                     * The value for the key is not included in the packet
-                     */
-#define TAP_FLAG_NO_VALUE 0x02
-                    /**
-                     * The flags are in network byte order
-                     */
-#define TAP_FLAG_NETWORK_BYTE_ORDER 0x04
-
-                    uint16_t flags;
-                    uint8_t  ttl;
-                    uint8_t  res1;
-                    uint8_t  res2;
-                    uint8_t  res3;
-                } tap;
-                struct {
-                    uint32_t flags;
-                    uint32_t expiration;
-                } item;
-            } body;
-        } message;
-        uint8_t bytes[sizeof(protocol_binary_request_header) + 16];
-    } protocol_binary_request_tap_mutation;
-
-    typedef union {
-        struct {
-            protocol_binary_request_header header;
-            struct {
-                struct {
-                    uint16_t enginespecific_length;
-                    /**
-                     * See the definition of the flags for
-                     * protocol_binary_request_tap_mutation for a description
-                     * of the available flags.
-                     */
-                    uint16_t flags;
-                    uint8_t  ttl;
-                    uint8_t  res1;
-                    uint8_t  res2;
-                    uint8_t  res3;
-                } tap;
+                uint64_t uuid;
             } body;
         } message;
         uint8_t bytes[sizeof(protocol_binary_request_header) + 8];
-    } protocol_binary_request_tap_no_extras;
-
-    typedef protocol_binary_request_tap_no_extras protocol_binary_request_tap_delete;
-    typedef protocol_binary_request_tap_no_extras protocol_binary_request_tap_flush;
-    typedef protocol_binary_request_tap_no_extras protocol_binary_request_tap_opaque;
-    typedef protocol_binary_request_tap_no_extras protocol_binary_request_tap_vbucket_set;
-
+    } protocol_binary_request_observe_seqno;
 
     /**
-     * Definition of the packet used by the scrub.
+     * Definition of the response packet for the observe_seqno command.
+     * Body: Contains a tuple of the form
+     *       <format_type, vbucket id, vbucket uuid, last_persisted_seqno, current_seqno>
+     *
+     *       - format_type is of type uint8_t and it describes whether
+     *         the vbucket has failed over or not. 1 indicates a hard
+     *         failover, 0 indicates otherwise.
+     *       - vbucket id is of type uint16_t and it is the identifier for
+     *         the vbucket.
+     *       - vbucket uuid is of type uint64_t and it represents a UUID for
+     *          the vbucket.
+     *       - last_persisted_seqno is of type uint64_t and it is the
+     *         last sequence number that was persisted for this
+     *         vbucket.
+     *       - current_seqno is of the type uint64_t and it is the
+     *         sequence number of the latest mutation in the vbucket.
+     *
+     *       In the case of a hard failover, the tuple is of the form
+     *       <format_type, vbucket id, vbucket uuid, last_persisted_seqno, current_seqno,
+     *       old vbucket uuid, last_received_seqno>
+     *
+     *       - old vbucket uuid is of type uint64_t and it is the
+     *         vbucket UUID of the vbucket prior to the hard failover.
+     *
+     *       - last_received_seqno is of type uint64_t and it is the
+     *         last received sequence number in the old vbucket uuid.
+     *
+     *       The other fields are the same as that mentioned in the normal case.
      */
-    typedef protocol_binary_request_no_extras protocol_binary_request_scrub;
-
-    /**
-     * Definition of the packet returned from scrub.
-     */
-    typedef protocol_binary_response_no_extras protocol_binary_response_scrub;
-
-
-    /**
-     * Definition of the packet used by set vbucket
-     */
-    typedef union {
-        struct {
-            protocol_binary_request_header header;
-            struct {
-                vbucket_state_t state;
-            } body;
-        } message;
-        uint8_t bytes[sizeof(protocol_binary_request_header) + sizeof(vbucket_state_t)];
-    } protocol_binary_request_set_vbucket;
-    /**
-     * Definition of the packet returned from set vbucket
-     */
-    typedef protocol_binary_response_no_extras protocol_binary_response_set_vbucket;
-    /**
-     * Definition of the packet used by del vbucket
-     */
-    typedef protocol_binary_request_no_extras protocol_binary_request_del_vbucket;
-    /**
-     * Definition of the packet returned from del vbucket
-     */
-    typedef protocol_binary_response_no_extras protocol_binary_response_del_vbucket;
-
-    /**
-     * Definition of the packet used by get vbucket
-     */
-    typedef protocol_binary_request_no_extras protocol_binary_request_get_vbucket;
-
-    /**
-     * Definition of the packet returned from get vbucket
-     */
-    typedef union {
-        struct {
-            protocol_binary_response_header header;
-            struct {
-                vbucket_state_t state;
-            } body;
-        } message;
-        uint8_t bytes[sizeof(protocol_binary_response_header) + sizeof(vbucket_state_t)];
-    } protocol_binary_response_get_vbucket;
-
+    typedef protocol_binary_response_no_extras protocol_binary_response_observe_seqno;
 
     /**
      * @}
      */
-
 #ifdef __cplusplus
 }
 #endif

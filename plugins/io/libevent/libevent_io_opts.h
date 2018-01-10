@@ -16,12 +16,25 @@
  */
 
 /**
- * libcouchbase_create_libevent_io_opts() allows you to create an instance
+ * @file
+ * libevent integration with libcouchbase
+ * @author Trond Norbye
+ */
+
+/**
+ * @ingroup lcb-io-plugin-api
+ * @defgroup lcb-libevent libevent
+ * @brief libev integration
+ *
+ * lcb_create_libevent_io_opts() allows you to create an instance
  * of the ioopts that will utilize libevent. You may either supply an event
  * base (if you'd like to add your own events into the loop), or it will
- * create it's own.
- *
- * @author Trond Norbye
+ * create its own.
+ */
+
+/**
+ * @addtogroup lcb-libevent
+ * @{
  */
 #ifndef LIBCOUCHBASE_LIBEVENT_IO_OPTS_H
 #define LIBCOUCHBASE_LIBEVENT_IO_OPTS_H 1
@@ -50,4 +63,5 @@ extern "C" {
 }
 #endif
 
+/**@}*/
 #endif
