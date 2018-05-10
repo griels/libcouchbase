@@ -15,6 +15,7 @@
  *   limitations under the License.
  */
 
+#include <lcb-jsoncpp/lcb-jsoncpp.h>
 #include "internal.h"
 
 void lcbcrypto_ref(lcbcrypto_PROVIDER *provider)
@@ -121,7 +122,7 @@ lcb_error_t lcbcrypto_encrypt_document(lcb_t instance, lcbcrypto_CMDENCRYPT *cmd
         }
 
         if (jdoc.isMember(field->name)) {
-            std::string contents = Json::FastWriter().write(jdoc[field->name]);
+            std::string contents = Json::FastWriter().writeRaw(jdoc[field->name]);
             Json::Value encrypted;
             int ret;
 

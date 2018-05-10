@@ -1725,7 +1725,9 @@ public:
 
   void enableYAMLCompatibility();
 
-public: // overridden from Writer
+public:
+  virtual std::string writeRaw(const Value& root);
+  // overridden from Writer
   virtual std::string write(const Value& root);
 
 private:

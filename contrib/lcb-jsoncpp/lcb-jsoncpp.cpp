@@ -4008,12 +4008,15 @@ FastWriter::FastWriter()
 
 void FastWriter::enableYAMLCompatibility() { yamlCompatiblityEnabled_ = true; }
 
-std::string FastWriter::write(const Value& root) {
+std::string FastWriter::writeRaw(const Value& root) {
   document_ = "";
   writeValue(root);
-  document_ += "\n";
   return document_;
 }
+
+std::string FastWriter::write(const Value &root) {
+  return writeRaw(root) + "\n";
+};
 
 void FastWriter::writeValue(const Value& value) {
   switch (value.type()) {
