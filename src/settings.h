@@ -127,6 +127,7 @@ struct lcb_METRICS_st;
  * Specifically this contains the 'environment' of the instance for things
  * which are intended to be passed around to other objects.
  */
+
 typedef struct lcb_settings_st {
     lcb_U64 iid;
     lcb_U8 compressopts;
@@ -197,7 +198,7 @@ typedef struct lcb_settings_st {
 
     uint8_t retry[LCB_RETRY_ON_MAX];
 
-    char *bucket;
+    struct opt_string* bucket;
     char *sasl_mech_force;
     char *truststorepath;
     char *certpath;

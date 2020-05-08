@@ -31,6 +31,7 @@
 
 #include "sllist.h"
 #include "sllist-inl.h"
+#include "connspec.h"
 
 #define LOGARGS(c, lvl) (c)->settings, "server", LCB_LOG_##lvl, __FILE__, __LINE__
 #define LOGARGS_T(lvl) LOGARGS(this, lvl)
@@ -742,8 +743,8 @@ void Server::purge_single(mc_PACKET *pkt, lcb_STATUS err)
         char opid[30] = {};
         snprintf(opid, sizeof(opid), "kv:%s", opcode_name(hdr.request.opcode));
         info["s"] = opid;
-        if (settings->bucket) {
-            info["b"] = settings->bucket;
+        if (settings->bucket->operator bool()){
+            info["b"] = settings->bucket->value_or("").str();
         }
         info["t"] = (Json::UInt64)LCB_NS2US(MCREQ_PKT_RDATA(pkt)->deadline - MCREQ_PKT_RDATA(pkt)->start);
 

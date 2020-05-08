@@ -471,10 +471,10 @@ lcb_STATUS lcb_create(lcb_INSTANCE **instance, const lcb_CREATEOPTS *options)
 
     if (spec.bucket().empty()) {
         if (type == LCB_TYPE_BUCKET) {
-            settings->bucket = strdup("default");
+            settings->bucket->assign("default");
         }
     } else {
-        settings->bucket = strdup(spec.bucket().c_str());
+        settings->bucket->assign(spec.bucket());
     }
 
     if (!spec.username().empty()) {
@@ -484,7 +484,7 @@ lcb_STATUS lcb_create(lcb_INSTANCE **instance, const lcb_CREATEOPTS *options)
     } else {
         if (type == LCB_TYPE_BUCKET) {
             settings->auth->set_mode(LCBAUTH_MODE_CLASSIC);
-            err = settings->auth->add(settings->bucket, spec.password(), LCBAUTH_F_BUCKET);
+            err = settings->auth->add(settings->bucket->buffer(), spec.password(), LCBAUTH_F_BUCKET);
         }
     }
     if (err != LCB_SUCCESS) {
@@ -509,7 +509,7 @@ lcb_STATUS lcb_create(lcb_INSTANCE **instance, const lcb_CREATEOPTS *options)
     lcb_log(LOGARGS(obj, INFO), "Version=%s, Changeset=%s", lcb_get_version(NULL), LCB_VERSION_CHANGESET);
     lcb_log(LOGARGS(obj, INFO), "Effective connection string: " LCB_LOG_SPEC("%s") ". Bucket=" LCB_LOG_SPEC("%s"),
             settings->log_redaction ? LCB_LOG_SD_OTAG : "", spec.connstr().c_str(), settings->log_redaction ? LCB_LOG_SD_CTAG : "",
-            settings->log_redaction ? LCB_LOG_MD_OTAG : "", settings->bucket, settings->log_redaction ? LCB_LOG_MD_CTAG : "");
+            settings->log_redaction ? LCB_LOG_MD_OTAG : "", settings->bucket->buffer(), settings->log_redaction ? LCB_LOG_MD_CTAG : "");
 
     if (io_priv == NULL) {
         lcb_io_opt_t ops;
@@ -758,8 +758,7 @@ lcb_STATUS lcb_open(lcb_INSTANCE *instance, const char *bucket, size_t bucket_le
         return LCB_ERR_INVALID_ARGUMENT;
     }
     instance->settings->conntype = LCB_TYPE_BUCKET;
-    instance->settings->bucket = (char *)calloc(bucket_len + 1, sizeof(char));
-    memcpy(instance->settings->bucket, bucket, bucket_len);
+    instance->settings->bucket->assign(std::string(bucket, bucket_len));
     return instance->bootstrap(BS_REFRESH_OPEN_BUCKET);
 }
 

@@ -21,6 +21,8 @@
 #include "auth-priv.h"
 #include <lcbio/ssl.h>
 #include "ctx-log-inl.h"
+#include "connspec.h"
+
 #define LOGARGS(ht, lvlbase) ht->parent->settings, "htconfig", LCB_LOG_##lvlbase, __FILE__, __LINE__
 
 #define LOGFMT CTX_LOGFMT
@@ -244,7 +246,7 @@ lcb_STATUS HttpProvider::setup_request_header(const lcb_host_t &host)
             } else {
                 request_buf.append(REQBUCKET_COMPAT_PREFIX);
             }
-            request_buf.append(settings().bucket);
+            request_buf.append(settings().bucket->value_or("").buffer);
         } else {
             request_buf.append(REQBUCKET_BUCKETLESS_PREFIX);
         }
@@ -256,11 +258,11 @@ lcb_STATUS HttpProvider::setup_request_header(const lcb_host_t &host)
     if (!settings().keypath) {
         // not using SSL client certificate to authenticate
         const std::string password = (settings().conntype == LCB_TYPE_BUCKET)
-                                         ? settings().auth->password_for(host.host, host.port, settings().bucket)
+                                         ? settings().auth->password_for(host.host, host.port, settings().bucket->buffer())
                                          : settings().auth->password();
         if (!password.empty()) {
             const std::string username = (settings().conntype == LCB_TYPE_BUCKET)
-                                             ? settings().auth->username_for(host.host, host.port, settings().bucket)
+                                             ? settings().auth->username_for(host.host, host.port, settings().bucket->buffer())
                                              : settings().auth->username();
             std::string cred;
             cred.append(username).append(":").append(password);

@@ -36,6 +36,92 @@
 #pragma warning(disable : 4251)
 #endif
 
+template <class F> struct ArgType;
+template <class R, class ...T>
+struct ArgType<R(*)(T...)>{
+    typedef R rtype;
+};
+template <typename T, typename SELF>
+struct optional
+{
+  protected:
+    T* m_content = NULL;
+  public:
+    typedef T VALUE_TYPE;
+    const T& value_or(const T& def)
+    {
+        return m_content?(*m_content):def;
+    }
+    optional& assign(const T& rhs){
+        delete this->m_content;
+        this->m_content=new T(rhs);
+        return *this;
+    }
+    explicit operator bool() const{
+        return m_content!= NULL;
+    }
+    explicit optional(const T& rhs):m_content(new T(rhs)){};
+    explicit optional()=default;
+    template <typename F>
+    typename ArgType<F>::rtype map(F func,const typename ArgType<F>::rtype& def){
+        return m_content?func(*m_content):def;
+    }
+    static SELF* make_optional(const T& value){return new SELF(value);}
+    static SELF* none(){return new SELF();}
+
+    bool operator<(const optional& rhs) const
+    {
+        return (rhs.m_content) && (!m_content || (*m_content)<(*rhs.m_content));
+    }
+
+    const static SELF NONE;
+    virtual ~optional(){
+        delete m_content;
+    }
+};
+#include "internalstructs.h"
+struct opt_string_cls: public optstring_content_t
+{
+    opt_string_cls():optstring_content_t{NULL,0}{};
+    explicit opt_string_cls(optstring_content_t content):optstring_content_t(content){};
+    opt_string_cls(const char* buf, size_t len):optstring_content_t{buf,len}{};
+    opt_string_cls(const char* buf):optstring_content_t{buf, strlen(buf)}{};
+    opt_string_cls(const std::string& str):optstring_content_t{strndup(str.c_str(), str.length()),str.length()}, owning(true){};
+    bool operator<(const opt_string_cls& rhs){
+        typedef std::tuple<const char*, size_t> comparable;
+        return comparable{this->buffer, this->length}<comparable(rhs.buffer,rhs.length);
+    }
+    explicit operator const char*() const{
+        return this->buffer;
+    }
+    explicit operator std::string() const{
+        return str();
+    }
+
+    std::string str() const{
+        return std::string(this->buffer, this->length);
+    };
+
+    ~opt_string_cls(){
+        if (owning){
+            free((void*)buffer);
+            buffer=NULL;
+        }
+    };
+private:
+    bool owning=false;
+};
+struct opt_string: public optional<opt_string_cls, opt_string>{
+    //explicit opt_string(const optstring_content_t& value):optional(value){};
+    explicit opt_string():optional(){};
+    const char* buffer() const{
+        return m_content?m_content->buffer:NULL;
+    };
+    size_t length() const{
+        return m_content?m_content->length:0;
+    }
+};
+
 namespace lcb
 {
 struct Spechost {

@@ -31,6 +31,7 @@
 #include "ctx-log-inl.h"
 
 #include <cstring>
+#include "connspec.h"
 
 #define LOGFMT CTX_LOGFMT
 #define LOGID(p) CTX_LOGID(p->ioctx)
@@ -150,7 +151,7 @@ lcb_STATUS CccpProvider::schedule_next_request(lcb_STATUS err, bool can_rollover
         lcb_log(LOGARGS(this, TRACE), "Re-Issuing CCCP Command on server struct %p (" LCB_HOST_FMT ")", (void *)server,
                 LCB_HOST_ARG(this->parent->settings, next_host));
         timer.rearm(settings().config_node_timeout);
-        if (settings().bucket && settings().bucket[0] != '\0' && !server->selected_bucket) {
+        if (settings().bucket && settings().bucket->buffer()[0] != '\0' && !server->selected_bucket) {
             instance->select_bucket(cmdcookie, server);
         }
         instance->request_config(cmdcookie, server);

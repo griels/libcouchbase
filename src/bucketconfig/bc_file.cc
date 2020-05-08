@@ -24,6 +24,7 @@
 #include <iostream>
 #include <istream>
 #include <cstring>
+#include "connspec.h"
 
 #define CONFIG_CACHE_MAGIC "{{{fb85b563d0a8f65fa8d3d58f1b3a0708}}}"
 
@@ -129,7 +130,7 @@ FileProvider::Status FileProvider::load_cache()
         goto GT_DONE;
     }
 
-    if (strcmp(vbc->bname, settings().bucket) != 0) {
+    if (strcmp(vbc->bname, settings().bucket->buffer()) != 0) {
         lcb_log(LOGARGS(this, ERROR), LOGFMT "Bucket name in file is different from the one requested", LOGID(this));
         goto GT_DONE;
     }
@@ -268,7 +269,7 @@ bool lcb::clconfig::file_set_filename(Provider *p, const char *f, bool ro)
 {
     FileProvider *provider = static_cast< FileProvider * >(p);
     provider->enabled = 1;
-    provider->filename = mkcachefile(f, p->parent->settings->bucket);
+    provider->filename = mkcachefile(f, p->parent->settings->bucket->buffer());
     if (provider->filename.empty()) {
         return false;
     }

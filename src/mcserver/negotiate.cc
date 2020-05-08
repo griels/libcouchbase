@@ -31,6 +31,7 @@
 #include "negotiate.h"
 #include "ctx-log-inl.h"
 #include "auth-priv.h"
+#include "connspec.h"
 
 using namespace lcb;
 
@@ -225,8 +226,8 @@ bool SessionRequestImpl::setup(const lcbio_NAMEINFO &nistrs, const lcb_host_t &h
     sasl_callbacks.password = sasl_get_password;
 
     // Get the credentials
-    username = auth.username_for(host.host, host.port, settings->bucket);
-    const std::string pass = auth.password_for(host.host, host.port, settings->bucket);
+    username = auth.username_for(host.host, host.port, settings->bucket->buffer());
+    const std::string pass = auth.password_for(host.host, host.port, settings->bucket->buffer());
 
     if (!pass.empty()) {
         size_t maxlen = sizeof(u_auth.buffer) - offsetof(cbsasl_secret_t, data);
@@ -515,10 +516,10 @@ bool SessionRequestImpl::maybe_select_bucket()
     // send the SELECT_BUCKET command:
     lcb_log(LOGARGS(this, DEBUG), LOGFMT "Sending SELECT_BUCKET", LOGID(this));
     lcb::MemcachedRequest req(PROTOCOL_BINARY_CMD_SELECT_BUCKET);
-    req.sizes(0, settings->bucket ? strlen(settings->bucket) : 0, 0);
+    req.sizes(0, settings->bucket ? settings->bucket->length() : 0, 0);
     lcbio_ctx_put(ctx, req.data(), req.size());
     if (settings->bucket) {
-        lcbio_ctx_put(ctx, settings->bucket, strlen(settings->bucket));
+        lcbio_ctx_put(ctx, settings->bucket, settings->bucket->length());
     }
     LCBIO_CTX_RSCHEDULE(ctx, 24);
     return true;

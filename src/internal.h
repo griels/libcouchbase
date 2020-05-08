@@ -189,10 +189,7 @@ struct lcb_st {
         return srvix;
     }
 
-    const char *get_bucketname() const
-    {
-        return settings->bucket;
-    }
+    const char *get_bucketname() const;
 
 #endif
 };
