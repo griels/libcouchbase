@@ -108,13 +108,13 @@ lcb_STATUS lcb_st::select_bucket(const void *cookie_, lcb::Server *server)
     packet->flags |= MCREQ_F_REQEXT;
 
     lcb_KEYBUF key = {};
-    LCB_KREQ_SIMPLE(&key, settings->bucket, strlen(settings->bucket));
+    LCB_KREQ_SIMPLE(&key, settings->bucket, settings->bucket ? strlen(settings->bucket) : 0);
     packet->flags |= MCREQ_F_NOCID;
     mcreq_reserve_key(server, packet, MCREQ_PKT_BASESIZE, &key, 0);
 
     lcb::MemcachedRequest hdr(PROTOCOL_BINARY_CMD_SELECT_BUCKET, packet->opaque);
     hdr.opaque(packet->opaque);
-    hdr.sizes(0, strlen(settings->bucket), 0);
+    hdr.sizes(0, settings->bucket ? strlen(settings->bucket) : 0, 0);
     memcpy(SPAN_BUFFER(&packet->kh_span), hdr.data(), hdr.size());
 
     mcreq_sched_enter(&cmdq);
