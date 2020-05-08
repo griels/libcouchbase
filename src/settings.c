@@ -89,7 +89,6 @@ lcb_settings *lcb_settings_new(void)
     lcb_settings *settings = calloc(1, sizeof(*settings));
     lcb_default_settings(settings);
     settings->refcount = 1;
-    settings->bucket = lcb_optstring_empty();
     settings->auth = lcbauth_new();
     settings->errmap = lcb_errmap_new();
     return settings;
