@@ -18,6 +18,7 @@
 #include "settings.h"
 #include <lcbio/ssl.h>
 #include <rdb/rope.h>
+#include "internalstructs.h"
 
 LCB_INTERNAL_API
 void lcb_default_settings(lcb_settings *settings)
@@ -88,6 +89,7 @@ lcb_settings *lcb_settings_new(void)
     lcb_settings *settings = calloc(1, sizeof(*settings));
     lcb_default_settings(settings);
     settings->refcount = 1;
+    settings->bucket = lcb_optstring_empty();
     settings->auth = lcbauth_new();
     settings->errmap = lcb_errmap_new();
     return settings;
@@ -109,6 +111,7 @@ void lcb_settings_unref(lcb_settings *settings)
     lcbauth_unref(settings->auth);
     lcb_errmap_free(settings->errmap);
 
+    lcb_optstring_dtor(settings->bucket);
     if (settings->ssl_ctx) {
         lcbio_ssl_free(settings->ssl_ctx);
     }

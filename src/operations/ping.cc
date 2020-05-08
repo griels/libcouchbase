@@ -18,6 +18,7 @@
 #include "internal.h"
 #include "http/http.h"
 #include "auth-priv.h"
+#include "connspec.h"
 
 LIBCOUCHBASE_API lcb_STATUS lcb_respping_status(const lcb_RESPPING *resp)
 {
@@ -562,9 +563,9 @@ lcb_STATUS lcb_ping(lcb_INSTANCE *instance, void *cookie, const lcb_CMDPING *cmd
         lcb_cmdhttp_method(htcmd, LCB_HTTP_METHOD_GET);                                                                \
         lcb_cmdhttp_handle(htcmd, &htreq);                                                                             \
         const lcb::Authenticator &auth = *instance->settings->auth;                                                    \
-        std::string username = auth.username_for(NULL, NULL, LCBT_SETTING(instance, bucket));                          \
+        std::string username = auth.username_for(NULL, NULL, LCBT_SETTING(instance, bucket)->buffer());                          \
         lcb_cmdhttp_username(htcmd, username.c_str(), username.size());                                                \
-        std::string password = auth.password_for(NULL, NULL, LCBT_SETTING(instance, bucket));                          \
+        std::string password = auth.password_for(NULL, NULL, LCBT_SETTING(instance, bucket)->buffer());                          \
         lcb_cmdhttp_password(htcmd, password.c_str(), password.size());                                                \
         lcb_cmdhttp_timeout(htcmd, LCBT_SETTING(instance, TMO));                                                       \
         rc = lcb_http(instance, ckwrap, htcmd);                                                                        \

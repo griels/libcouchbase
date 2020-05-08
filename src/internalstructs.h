@@ -23,7 +23,23 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+typedef struct opt_string opt_string_t;
 
+opt_string_t* lcb_optstring_init(const char* init, size_t length);
+opt_string_t* lcb_optstring_empty(void);
+const struct opt_string* lcb_optstring_empty_const(void);
+
+typedef struct optstring_content {
+    const char* buffer;
+    size_t length;
+} optstring_content_t;
+optstring_content_t lcb_optstring_get_or_default(opt_string_t* optString, optstring_content_t def);
+optstring_content_t lcb_optstring_get(opt_string_t* optString);
+void lcb_optstring_dtor(opt_string_t* optString);
+
+int lcb_strcmp(optstring_content_t lhs, optstring_content_t rhs);
+int lcb_optstring_exists(optstring_content_t lhs);
+int lcb_optstring_cmp(opt_string_t *lhs, opt_string_t *rhs);
 /**
  * @private
  */

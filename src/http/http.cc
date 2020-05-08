@@ -21,6 +21,7 @@
 #include "http/http-priv.h"
 #include "auth-priv.h"
 #include "trace.h"
+#include "connspec.h"
 
 LIBCOUCHBASE_API lcb_STATUS lcb_resphttp_status(const lcb_RESPHTTP *resp)
 {
@@ -641,11 +642,11 @@ lcb_STATUS Request::setup_inputs(const lcb_CMDHTTP *cmd)
                     }
                     std::string hh(base + info.field_data[UF_HOST].off, info.field_data[UF_HOST].len);
                     std::string pp(base + info.field_data[UF_PORT].off, info.field_data[UF_PORT].len);
-                    username = auth.username_for(hh.c_str(), pp.c_str(), LCBT_SETTING(instance, bucket));
-                    password = auth.password_for(hh.c_str(), pp.c_str(), LCBT_SETTING(instance, bucket));
+                    username = auth.username_for(hh.c_str(), pp.c_str(), LCBT_SETTING(instance, bucket)->buffer());
+                    password = auth.password_for(hh.c_str(), pp.c_str(), LCBT_SETTING(instance, bucket)->buffer());
                 } else {
-                    username = auth.username_for(NULL, NULL, LCBT_SETTING(instance, bucket));
-                    password = auth.password_for(NULL, NULL, LCBT_SETTING(instance, bucket));
+                    username = auth.username_for(NULL, NULL, LCBT_SETTING(instance, bucket)->buffer());
+                    password = auth.password_for(NULL, NULL, LCBT_SETTING(instance, bucket)->buffer());
                 }
             }
         }

@@ -18,6 +18,7 @@
 #include "internal.h"
 #include "packetutils.h"
 #include <bucketconfig/clconfig.h>
+#include "connspec.h"
 
 static void ext_callback_proxy(mc_PIPELINE *pl, mc_PACKET *req, lcb_STATUS rc, const void *resdata)
 {
@@ -108,13 +109,13 @@ lcb_STATUS lcb_st::select_bucket(const void *cookie_, lcb::Server *server)
     packet->flags |= MCREQ_F_REQEXT;
 
     lcb_KEYBUF key = {};
-    LCB_KREQ_SIMPLE(&key, settings->bucket, settings->bucket?strlen(settings->bucket):0);
+    LCB_KREQ_SIMPLE(&key, settings->bucket, settings->bucket->length());
     packet->flags |= MCREQ_F_NOCID;
     mcreq_reserve_key(server, packet, MCREQ_PKT_BASESIZE, &key, 0);
 
     lcb::MemcachedRequest hdr(PROTOCOL_BINARY_CMD_SELECT_BUCKET, packet->opaque);
     hdr.opaque(packet->opaque);
-    hdr.sizes(0, settings->bucket?strlen(settings->bucket):0, 0);
+    hdr.sizes(0, settings->bucket->length(), 0);
     memcpy(SPAN_BUFFER(&packet->kh_span), hdr.data(), hdr.size());
 
     mcreq_sched_enter(&cmdq);

@@ -25,6 +25,7 @@
 #include "lcbio/timer-ng.h"
 #include "settings.h"
 #include "internal.h"
+#include "connspec.h"
 
 #define LOGFMT "(mgreq=%p) "
 #define LOGID(req) static_cast< const void * >(req)
@@ -226,7 +227,7 @@ class IndexSpec : public lcb_N1XSPEC
         if (nkeyspace) {
             return;
         }
-        keyspace = LCBT_SETTING(instance, bucket);
+        keyspace = LCBT_SETTING(instance, bucket)->buffer();
         nkeyspace = strlen(keyspace);
     }
 

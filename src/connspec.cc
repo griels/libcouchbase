@@ -467,3 +467,41 @@ bool
 Connspec::is_explicit_dnssrv() const {
     return (m_flags & F_DNSSRV_EXPLICIT) == F_DNSSRV_EXPLICIT;
 }
+
+opt_string* lcb_optstring_empty(void)
+{
+    return new opt_string();
+}
+
+optstring_content_t lcb_optstring_get(opt_string* optString)
+{
+    opt_string_cls result=optString->value_or("");
+    return optstring_content{result.buffer, result.length};
+}
+
+void lcb_optstring_dtor(opt_string* optString){
+    delete optString;
+}
+
+int lcb_optstring_exists(opt_string* lhs)
+{
+    return lhs && bool(*lhs);
+}
+
+int lcb_strcmp(opt_string *lhs, opt_string *rhs)
+{
+    return
+            lhs ?
+            (
+                    rhs ?
+                        ((*lhs) < (*rhs)) ?
+                            -1 :
+                            ((*rhs) < (*lhs) ? 1 : 0) :
+                        1):
+            (rhs ? -1 : 0);
+}
+
+#include "internal.h"
+const char* lcb_st::get_bucketname() const {
+    return settings->bucket->buffer();
+}

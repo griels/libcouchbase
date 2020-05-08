@@ -17,6 +17,7 @@
 
 #include "internal.h"
 #include <http/http.h>
+#include "connspec.h"
 
 static void flush_cb(lcb_INSTANCE *instance, int, const lcb_RESPBASE *rb)
 {
@@ -44,7 +45,7 @@ lcb_STATUS lcb_cbflush3(lcb_INSTANCE *instance, void *cookie, const lcb_CMDCBFLU
     lcb_STATUS rc;
 
     std::string urlpath("/pools/default/buckets/");
-    urlpath.append(LCBT_SETTING(instance, bucket));
+    urlpath.append(LCBT_SETTING(instance, bucket)->value_or("").buffer);
     urlpath.append("/controller/doFlush");
 
     lcb_CMDHTTP *htcmd;

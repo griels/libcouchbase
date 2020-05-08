@@ -20,6 +20,7 @@
 #ifdef HAVE__FTIME64_S
 #include <sys/timeb.h>
 #endif
+#include "connspec.h"
 
 typedef enum { TAGVAL_STRING, TAGVAL_UINT64, TAGVAL_DOUBLE, TAGVAL_BOOL } tag_type;
 typedef struct tag_value {
@@ -131,7 +132,7 @@ void lcbtrace_span_add_system_tags(lcbtrace_SPAN *span, lcb_settings *settings, 
     }
     span->add_tag(LCBTRACE_TAG_COMPONENT, 0, client_string.c_str(), client_string.size(), 1);
     if (settings->bucket) {
-        span->add_tag(LCBTRACE_TAG_DB_INSTANCE, 0, settings->bucket, 0);
+        span->add_tag(LCBTRACE_TAG_DB_INSTANCE, 0, settings->bucket->buffer(), 0);
     }
 }
 
